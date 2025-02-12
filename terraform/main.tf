@@ -1,3 +1,7 @@
+locals {
+  name_suffix = "${var.app_name}-${var.environment}-${var.aws_region}"
+}
+
 # --------------------------------- IAM -------------------------------------------
 
 data "aws_iam_policy_document" "lambda_assume_role_policy" {
@@ -25,18 +29,65 @@ data aws_iam_policy_document "lambda_policy" {
 }
 
 resource "aws_iam_role" "lambda_role" {
-  name = "${var.app_name}-LambdaRole-${var.environment}-${var.aws_region}"
+  name = "LambdaRole-${local.name_suffix}"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
   inline_policy {
-    name = "${var.app_name}-LambdaPolicy-${var.environment}-${var.aws_region}"
+    name = "LambdaPolicy-${local.name_suffix}"
     policy = data.aws_iam_policy_document.lambda_policy.json
+  }
+}
+
+data "aws_iam_policy_document" "scheduler_policy" {
+  statement {
+    sid = "AllowToInvokeScheduledLambda"
+    effect = "Allow"
+    actions = ["lambda:InvokeFunction"]
+    resources = [aws_lambda_function.scheduled_lambda.arn]
+  }
+}
+
+data "aws_iam_policy_document" "scheduler_assume_policy" {
+  statement {
+    sid = "AllowToBeAssumedByScheduler"
+    effect = "Allow"
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["scheduler.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "scheduler_role" {
+  name = "SchedulerRole-${local.name_suffix}"
+  assume_role_policy = data.aws_iam_policy_document.scheduler_assume_policy.json
+  inline_policy {
+    name = "SchedulerPolicy-${local.name_suffix}"
+    policy = data.aws_iam_policy_document.scheduler_policy.json
   }
 }
 
 # --------------------------------- Lambdas -----------------------------------------
 
+resource "aws_lambda_layer_version" "libraries_lambda_layer" {
+  layer_name = "Libraries-${local.name_suffix}"
+  filename = "../artifacts/lambda_layer.zip"
+  source_code_hash = filebase64sha256("../artifacts/lambda_layer.zip")
+  compatible_runtimes = ["python3.12"]
+}
+
+locals {
+  discord_interaction_lambda_name = "DiscordInteractionLambda-${local.name_suffix}"
+  scheduled_lambda_name = "ScheduledLambda-${local.name_suffix}"
+}
+
+resource "aws_cloudwatch_log_group" "discord_interaction_lambda_log_group" {
+  name = "/aws/lambda/${local.discord_interaction_lambda_name}"
+  retention_in_days = 30
+}
+
 resource "aws_lambda_function" "discord_interaction_lambda" {
-  function_name = "DiscordInteraction-${var.app_name}-${var.environment}-${var.aws_region}"
+  function_name = local.discord_interaction_lambda_name
   role          = aws_iam_role.lambda_role.arn
   description = "Lambda monolith to perform Pizza Roller operations"
 
@@ -45,6 +96,7 @@ resource "aws_lambda_function" "discord_interaction_lambda" {
   source_code_hash = filebase64sha256("../artifacts/discord_interaction_lambda.zip")
 
   runtime = "python3.12"
+  layers = [aws_lambda_layer_version.libraries_lambda_layer.arn]
   handler = "main.lambda_handler"
   memory_size = 512
   timeout = 30
@@ -54,10 +106,19 @@ resource "aws_lambda_function" "discord_interaction_lambda" {
       APPLICATION_PUBLIC_KEY = var.discord_application_public_key
     }
   }
+
+  depends_on = [
+    aws_cloudwatch_log_group.discord_interaction_lambda_log_group
+  ]
+}
+
+resource "aws_cloudwatch_log_group" "scheduled_lambda_log_group" {
+  name = "/aws/lambda/${local.scheduled_lambda_name}"
+  retention_in_days = 30
 }
 
 resource "aws_lambda_function" "scheduled_lambda" {
-  function_name = "Scheduled-${var.app_name}-${var.environment}-${var.aws_region}"
+  function_name = local.scheduled_lambda_name
   role          = aws_iam_role.lambda_role.arn
   description = "Lambda triggered by AWS scheduler to perform tasks on time"
 
@@ -66,6 +127,7 @@ resource "aws_lambda_function" "scheduled_lambda" {
   source_code_hash = filebase64sha256("../artifacts/scheduled_lambda.zip")
 
   runtime = "python3.12"
+  layers = [aws_lambda_layer_version.libraries_lambda_layer.arn]
   handler = "main.lambda_handler"
   memory_size = 512
   timeout = 30
@@ -74,12 +136,16 @@ resource "aws_lambda_function" "scheduled_lambda" {
 
     }
   }
+
+  depends_on = [
+    aws_cloudwatch_log_group.scheduled_lambda_log_group
+  ]
 }
 
 # -------------------------------- API gateway -------------------------------------
 
 locals {
-  api_gateway_name = "API-${var.app_name}-${var.environment}-${var.aws_region}"
+  api_gateway_name = "ApiGateway-${local.name_suffix}"
 }
 
 # Configure access logging for the API gateway
@@ -165,46 +231,12 @@ resource "aws_lambda_permission" "api_gateway_lambda_permission" {
 
 # -------------------------------------------- scheduler ---------------------------------
 
-locals {
-  scheduler_name_suffix = "${var.app_name}-${var.environment}-${var.aws_region}"
-}
-
 resource "aws_scheduler_schedule_group" "schedule_group" {
-  name = "Schedules-${local.scheduler_name_suffix}"
-}
-
-data "aws_iam_policy_document" "scheduler_policy" {
-  statement {
-    sid = "AllowToInvokeScheduledLambda"
-    effect = "Allow"
-    actions = ["lambda:InvokeFunction"]
-    resources = [aws_lambda_function.scheduled_lambda.arn]
-  }
-}
-
-data "aws_iam_policy_document" "scheduler_assume_policy" {
-  statement {
-    sid = "AllowToBeAssumedByScheduler"
-    effect = "Allow"
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "Service"
-      identifiers = ["scheduler.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_iam_role" "scheduler_role" {
-  name = "Scheduler-${local.scheduler_name_suffix}"
-  assume_role_policy = data.aws_iam_policy_document.scheduler_assume_policy.json
-  inline_policy {
-    name = "AllowSchedulerToInvokeLambda"
-    policy = data.aws_iam_policy_document.scheduler_policy.json
-  }
+  name = "Schedules-${local.name_suffix}"
 }
 
 resource "aws_scheduler_schedule" "daily_sport_poll_schedule" {
-  name = "DailySportPollSchedule-${local.scheduler_name_suffix}"
+  name = "DailySportPollSchedule-${local.name_suffix}"
   group_name = aws_scheduler_schedule_group.schedule_group.id
   description = "Scheduled daily sport poll on Discord."
 

@@ -1,4 +1,6 @@
 terraform/secrets.tfvars
+terraform/secrets.auto.tfvars
+terraform/bot.tfplan
 
 artifacts
 
