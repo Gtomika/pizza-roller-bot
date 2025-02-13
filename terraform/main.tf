@@ -269,7 +269,7 @@ resource "aws_scheduler_schedule" "daily_sport_poll_schedule" {
     mode = "FLEXIBLE"
     maximum_window_in_minutes = 10
   }
-  schedule_expression = "cron(0 18 * * ? *)"
+  schedule_expression = "cron(0 16 * * ? *)"
   schedule_expression_timezone = "Europe/Budapest"
 
   target {
