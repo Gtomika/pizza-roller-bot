@@ -26,15 +26,33 @@ data aws_iam_policy_document "lambda_policy" {
     ]
     resources = ["arn:aws:logs:*:*:*"]
   }
+  statement {
+    sid = "AllowLambdaToManageSSMParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameter",
+      "ssm:PutParameter",
+    ]
+    resources = [
+      # this is not the best approach, but it's fine
+      "*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "lambda_policy" {
+  name = "LambdaPolicy-${local.name_suffix}"
+  policy = data.aws_iam_policy_document.lambda_policy.json
 }
 
 resource "aws_iam_role" "lambda_role" {
   name = "LambdaRole-${local.name_suffix}"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
-  inline_policy {
-    name = "LambdaPolicy-${local.name_suffix}"
-    policy = data.aws_iam_policy_document.lambda_policy.json
-  }
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_role_policy_attachment" {
+  role   = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.lambda_policy.arn
 }
 
 data "aws_iam_policy_document" "scheduler_policy" {
@@ -58,13 +76,19 @@ data "aws_iam_policy_document" "scheduler_assume_policy" {
   }
 }
 
+resource "aws_iam_policy" "scheduler_policy" {
+  name = "SchedulerPolicy-${local.name_suffix}"
+  policy = data.aws_iam_policy_document.scheduler_policy.json
+}
+
 resource "aws_iam_role" "scheduler_role" {
   name = "SchedulerRole-${local.name_suffix}"
   assume_role_policy = data.aws_iam_policy_document.scheduler_assume_policy.json
-  inline_policy {
-    name = "SchedulerPolicy-${local.name_suffix}"
-    policy = data.aws_iam_policy_document.scheduler_policy.json
-  }
+}
+
+resource "aws_iam_role_policy_attachment" "scheduler_role_policy_attachment" {
+  role   = aws_iam_role.scheduler_role.name
+  policy_arn = aws_iam_policy.scheduler_policy.arn
 }
 
 # --------------------------------- Lambdas -----------------------------------------
@@ -133,7 +157,8 @@ resource "aws_lambda_function" "scheduled_lambda" {
   timeout = 30
   environment {
     variables = {
-
+      DISCORD_BOT_TOKEN = var.discord_bot_token
+      DAILY_SPORTS_POLL_PARAMETER_NAME = local.daily_sports_poll_channel_id_param_name
     }
   }
 
@@ -199,7 +224,7 @@ resource "aws_apigatewayv2_stage" "api_gateway_stage" {
 }
 
 resource "aws_apigatewayv2_deployment" "api_gateway_deployment" {
-  api_id        = aws_apigatewayv2_api.api_gateway.id
+  api_id      = aws_apigatewayv2_api.api_gateway.id
   description = "Deployment for the ${local.api_gateway_name} HTTP API Gateway"
 
   # To avoid attempting deployment before route + integration are ready
@@ -214,8 +239,8 @@ resource "aws_apigatewayv2_deployment" "api_gateway_deployment" {
 
   triggers = { # to avoid unnecessary re-deployments
     redeployment = sha1(join(",", tolist([
-      jsondecode(aws_apigatewayv2_integration.lambda_integration),
-      jsondecode(aws_apigatewayv2_route.lambda_route)
+      jsonencode(aws_apigatewayv2_integration.lambda_integration),
+      jsonencode(aws_apigatewayv2_route.lambda_route)
     ])))
   }
 }
@@ -241,9 +266,10 @@ resource "aws_scheduler_schedule" "daily_sport_poll_schedule" {
   description = "Scheduled daily sport poll on Discord."
 
   flexible_time_window {
-    mode = "OFF"
+    mode = "FLEXIBLE"
+    maximum_window_in_minutes = 10
   }
-  schedule_expression = "cron(0 20 * * *)"
+  schedule_expression = "cron(0 12 * * ? *)"
   schedule_expression_timezone = "Europe/Budapest"
 
   target {
@@ -254,5 +280,23 @@ resource "aws_scheduler_schedule" "daily_sport_poll_schedule" {
       InvocationType = "Event"
       Payload = "{\"event_type\":\"daily_sports_poll\"}"
     })
+  }
+}
+
+# -------------------- parameter store ------------------
+
+locals {
+  daily_sports_poll_channel_id_param_name = "DailySportsPollChannelId-${local.name_suffix}"
+}
+
+resource "aws_ssm_parameter" "daily_sports_poll_channel_id_parameter" {
+  name = local.daily_sports_poll_channel_id_param_name
+  type = "String"
+  value = var.daily_sports_poll_channel_id
+  description = "Discord channel ID of the channel where the daily sports poll is to be posted."
+
+  # This can be updated later, but don't want to trigger a change in the resource
+  lifecycle {
+    ignore_changes = [value]
   }
 }

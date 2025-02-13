@@ -3,6 +3,7 @@ terraform/secrets.auto.tfvars
 terraform/bot.tfplan
 
 artifacts
+installed_dependencies
 
 .idea
 

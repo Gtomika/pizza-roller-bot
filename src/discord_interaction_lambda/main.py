@@ -1,17 +1,12 @@
 import os
-import requests
 import json
 
-import discord_interactions
 import api_gateway_interactions as agi
 from nacl.signing import VerifyKey
 
 ACK_TYPE = 1
 RESPONSE_TYPE = 4
 DEFER_TYPE = 5
-
-discord_api_base_url = "https://discord.com/api/v10"
-bot_token = os.getenv("DISCORD_BOT_TOKEN")
 
 # Request verification
 application_public_key = os.getenv('APPLICATION_PUBLIC_KEY')
@@ -62,17 +57,3 @@ def is_request_verified(headers, body_raw: str) -> bool:
         print(f'Exception while validating request: {str(e)}')
         return False
 
-
-def send_text_message(channel_id, content, access_token):
-    request = requests.post(
-        f'{discord_api_base_url}/channels/{channel_id}/messages',
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': f'Bot {access_token}'
-        },
-        data={
-            'content': content
-        }
-    )
-    request.raise_for_status()
-    print(f'Text message response: {request.json()}')

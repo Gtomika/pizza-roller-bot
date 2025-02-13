@@ -72,7 +72,7 @@ variable "oauth_client_secret" {
   description = "Discord app's oauth client secret"
 }
 
-variable "sports_poll_channel_id" {
+variable "daily_sports_poll_channel_id" {
   type = string
   description = "Discord channel ID for daily sports poll"
 }
