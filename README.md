@@ -23,9 +23,11 @@ python -m pip install -r requirements-local.txt
 I was too lazy to write a Ci/Cd pipeline for this project, so deployment is documented here.
 Requires that Python 3 and Terraform is installed.
 
-Create required ZIP files in the `artifacts` folder:
+Create required ZIP files in the `artifacts` folder. This should be done on a Linux environment, 
+as the created libraries in the ZIP files will be executed in such environment (AWS Lambda is using Linux)
 
 ```bash
+export SKIP_LAYER_BUILDING=0
 python build_lambda_artifacts.py
 ```
 

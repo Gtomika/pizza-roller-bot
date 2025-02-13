@@ -197,7 +197,7 @@ resource "aws_apigatewayv2_integration" "lambda_integration" {
 
 resource "aws_apigatewayv2_route" "lambda_route" {
   api_id    = aws_apigatewayv2_api.api_gateway.id
-  route_key = "POST /pizza-roller"
+  route_key = "POST /discord-interactions"
   target = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 
@@ -269,7 +269,7 @@ resource "aws_scheduler_schedule" "daily_sport_poll_schedule" {
     mode = "FLEXIBLE"
     maximum_window_in_minutes = 10
   }
-  schedule_expression = "cron(0 12 * * ? *)"
+  schedule_expression = "cron(0 18 * * ? *)"
   schedule_expression_timezone = "Europe/Budapest"
 
   target {
