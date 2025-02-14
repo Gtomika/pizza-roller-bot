@@ -50,6 +50,7 @@ def extract_event_type(payload: dict) -> str:
 def get_daily_sports_poll_channel_id():
     ssm_parameter = ssm_client.get_parameter(Name=daily_sports_channel_id_param_name)
     return ssm_parameter['Parameter']['Value']
+    # return '968777260712747029'
 
 
 def send_daily_sports_poll_message(channel_id):
@@ -60,7 +61,12 @@ def send_daily_sports_poll_message(channel_id):
             'Authorization': f'Bot {bot_token}'
         },
         json={
-            'poll': build_daily_sports_poll_object()
+            # content will be displayed above the poll, this is governed by Discord, not the order of these fields
+            'poll': build_daily_sports_poll_object(),
+            'content': '@everyone, szavazzatok, különben Lili mérges lesz 😳',
+            'allowed_mentions': {
+                'parse': ['everyone']
+            }
         }
     )
     print(f'Discord API response to daily sports poll request: {response.json()}')
@@ -93,5 +99,5 @@ def build_daily_sports_poll_object():
             }
         ],
         'duration': 6,
-        'allow_multiselect': False,
+        'allow_multiselect': False
     }
