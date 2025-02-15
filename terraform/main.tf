@@ -126,6 +126,7 @@ resource "aws_lambda_function" "discord_interaction_lambda" {
   timeout = 30
   environment {
     variables = {
+      DISCORD_APPLICATION_ID = var.discord_application_id
       DISCORD_BOT_TOKEN = var.discord_bot_token
       APPLICATION_PUBLIC_KEY = var.discord_application_public_key
     }
@@ -157,6 +158,7 @@ resource "aws_lambda_function" "scheduled_lambda" {
   timeout = 30
   environment {
     variables = {
+      DISCORD_APPLICATION_ID = var.discord_application_id
       DISCORD_BOT_TOKEN = var.discord_bot_token
       DAILY_SPORTS_POLL_PARAMETER_NAME = local.daily_sports_poll_channel_id_param_name
     }

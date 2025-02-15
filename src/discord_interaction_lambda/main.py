@@ -1,15 +1,15 @@
-import os
 import json
-
-import api_gateway_interactions as agi
 from nacl.signing import VerifyKey
+
+from src.commons import lambda_utils
+from src.commons import api_gateway_interactions as agi
 
 ACK_TYPE = 1
 RESPONSE_TYPE = 4
 DEFER_TYPE = 5
 
 # Request verification
-application_public_key = os.getenv('APPLICATION_PUBLIC_KEY')
+application_public_key = lambda_utils.get_env_var('APPLICATION_PUBLIC_KEY')
 verify_key = VerifyKey(bytes.fromhex(application_public_key))
 signature_header_name = 'x-signature-ed25519'
 timestamp_header_name = 'x-signature-timestamp'
@@ -17,12 +17,6 @@ timestamp_header_name = 'x-signature-timestamp'
 
 # this lambda handler receives interaction events from Discord, through the AWS API Gateway
 def lambda_handler(event, context):
-    """
-    Lambdalith for the Pizza Roller application. Handles request from API gateway, including discord interactions.
-    :param event:
-    :param context:
-    :return:
-    """
     # print(json.dumps(event, indent=4))
     headers, body_raw = agi.parse_api_gateway_event(event)
     body = json.loads(body_raw)

@@ -23,6 +23,8 @@ def install_layer_dependencies():
 
 
 def build_layer_zip():
+    # copying the commons folder into the layer as well, so we can use it in all lambdas by importing from 'src.commons'
+    shutil.copytree('src/commons', f'installed_dependencies/{python_layer_required_path}/src/commons')
     shutil.make_archive('artifacts/lambda_layer', 'zip', 'installed_dependencies')
 
 

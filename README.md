@@ -24,39 +24,10 @@ I was too lazy to write a Ci/Cd pipeline for this project, so deployment is docu
 Requires that Python 3, Docker and Terraform is installed.
 
 Create required ZIP files in the `artifacts` folder. This should be done on a Amazon Lambda runtime Python 3.12 Linux environment, 
-as the created libraries in the ZIP files will be executed in such environment.
-
-First, create docker container of Amazon Lambda Python 3.12 runtime, and copy the necessary files in. Inside this projects 
-root folder, execute:
+as the created libraries in the ZIP files will be executed in such environment. I have created a script for this purpose:
 
 ```bash
-docker pull public.ecr.aws/lambda/python:3.12
-docker run --name amzn -d -t --rm public.ecr.aws/lambda/python:3.12 /bin/bash
-docker cp requirements-lambda.txt amzn:/root/requirements-lambda.txt
-docker cp build_lambda_artifacts.py amzn:/root/build_lambda_artifacts.py
-docker cp src amzn:/root/src
-```
-
-Then log into this docker container:
-
-```bash
-docker exec -it amzn bash
-```
-
-Inside the container, build the lambda artifacts:
-
-```bash
-cd /root
-export SKIP_LAYER_BUILDING=0
-python build_lambda_artifacts.py
-exit
-```
-
-Then copy the artifacts out:
-
-```bash
-mkdir artifacts
-docker cp amzn:/root/artifacts .
+./build_artifacts.sh
 ```
 
 Now the `artifacts` folder with the ZIP files is present on your host OS and you can start deploying.
