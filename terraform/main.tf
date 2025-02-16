@@ -33,10 +33,29 @@ data aws_iam_policy_document "lambda_policy" {
       "ssm:GetParameter",
       "ssm:PutParameter",
     ]
-    resources = [
-      # this is not the best approach, but it's fine
-      "*"
+    resources = ["*"] # TODO limit to specific parameters
+  }
+  statement {
+    sid = "AllowLambdaToManageSchedules"
+    effect = "Allow"
+    actions = [
+      "scheduler:*Schedule",
+      "scheduler:List*"
     ]
+    resources = ["*"] # TODO limit to specific schedules
+  }
+  statement {
+    sid = "AllowLambdaToPassRoleToScheduler"
+    effect = "Allow"
+    actions = [
+      "iam:PassRole"
+    ]
+    resources = ["*"] # TODO limit to specific roles
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["scheduler.amazonaws.com"]
+    }
   }
 }
 
@@ -126,6 +145,9 @@ resource "aws_lambda_function" "discord_interaction_lambda" {
   timeout = 30
   environment {
     variables = {
+      APP_NAME = var.app_name
+      ENVIRONMENT = var.environment
+      AWS_REGION = var.aws_region
       DISCORD_APPLICATION_ID = var.discord_application_id
       DISCORD_BOT_TOKEN = var.discord_bot_token
       APPLICATION_PUBLIC_KEY = var.discord_application_public_key
@@ -158,9 +180,15 @@ resource "aws_lambda_function" "scheduled_lambda" {
   timeout = 30
   environment {
     variables = {
+      APP_NAME = var.app_name
+      ENVIRONMENT = var.environment
+      AWS_REGION = var.aws_region
       DISCORD_APPLICATION_ID = var.discord_application_id
       DISCORD_BOT_TOKEN = var.discord_bot_token
-      DAILY_SPORTS_POLL_PARAMETER_NAME = local.daily_sports_poll_channel_id_param_name
+      DAILY_SPORTS_POLL_CHANNEL_ID_PARAMETER_NAME = local.daily_sports_poll_channel_id_param_name
+      DAILY_SPORTS_POLL_MESSAGE_ID_PARAMETER_NAME = local.daily_sports_poll_message_id_param_name
+      SCHEDULER_ROLE_ARN = aws_iam_role.scheduler_role.arn
+      SCHEDULER_GROUP_NAME = aws_scheduler_schedule_group.schedule_group.name
     }
   }
 
@@ -289,6 +317,7 @@ resource "aws_scheduler_schedule" "daily_sport_poll_schedule" {
 
 locals {
   daily_sports_poll_channel_id_param_name = "DailySportsPollChannelId-${local.name_suffix}"
+  daily_sports_poll_message_id_param_name = "DailySportsPollMessageId-${local.name_suffix}"
 }
 
 resource "aws_ssm_parameter" "daily_sports_poll_channel_id_parameter" {
@@ -296,6 +325,18 @@ resource "aws_ssm_parameter" "daily_sports_poll_channel_id_parameter" {
   type = "String"
   value = var.daily_sports_poll_channel_id
   description = "Discord channel ID of the channel where the daily sports poll is to be posted."
+
+  # This can be updated later, but don't want to trigger a change in the resource
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "daily_sports_poll_message_id_parameter" {
+  name = local.daily_sports_poll_message_id_param_name
+  type = "String"
+  value = "" # initially empty, will be updated by the lambda
+  description = "Discord message ID of the currently active daily sports poll."
 
   # This can be updated later, but don't want to trigger a change in the resource
   lifecycle {

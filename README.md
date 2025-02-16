@@ -8,7 +8,7 @@ This bot is equipped to support slash `/` commands, but right now no slash comma
 are added.
 
 Additionally, the bot is able to create a daily sports poll to a preselected channel. This 
-channel is configurable from AWS SSM parameter store.
+channel is configurable from AWS SSM parameter store. The results of the poll will then be processed and saved.
 
 ## How to develop
 
@@ -17,6 +17,9 @@ The bot is written in Python 3.12. Install required dependencies by:
 ```bash
 python -m pip install -r requirements-local.txt
 ```
+
+Additionally, get `pizza_roll_internal.py` from the 'src/commons' is not checked into git, as it contains non public 
+information. It's required for the bot to work.
 
 ## How to deploy
 

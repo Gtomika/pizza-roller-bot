@@ -9,3 +9,5 @@ installed_dependencies
 
 terraform/.terraform
 terraform/.terraform.lock.hcl
+
+src/commons/pizza_roll_internal.py
