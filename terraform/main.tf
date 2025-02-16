@@ -147,7 +147,7 @@ resource "aws_lambda_function" "discord_interaction_lambda" {
     variables = {
       APP_NAME = var.app_name
       ENVIRONMENT = var.environment
-      AWS_REGION = var.aws_region
+      # AWS_REGION = var.aws_region -> provided by default in lambda runtime
       DISCORD_APPLICATION_ID = var.discord_application_id
       DISCORD_BOT_TOKEN = var.discord_bot_token
       APPLICATION_PUBLIC_KEY = var.discord_application_public_key
@@ -182,7 +182,7 @@ resource "aws_lambda_function" "scheduled_lambda" {
     variables = {
       APP_NAME = var.app_name
       ENVIRONMENT = var.environment
-      AWS_REGION = var.aws_region
+      # AWS_REGION = var.aws_region -> provided by default in lambda runtime
       DISCORD_APPLICATION_ID = var.discord_application_id
       DISCORD_BOT_TOKEN = var.discord_bot_token
       DAILY_SPORTS_POLL_CHANNEL_ID_PARAMETER_NAME = local.daily_sports_poll_channel_id_param_name
@@ -335,7 +335,7 @@ resource "aws_ssm_parameter" "daily_sports_poll_channel_id_parameter" {
 resource "aws_ssm_parameter" "daily_sports_poll_message_id_parameter" {
   name = local.daily_sports_poll_message_id_param_name
   type = "String"
-  value = "" # initially empty, will be updated by the lambda
+  value = "not calculated" # will be updated by the lambda
   description = "Discord message ID of the currently active daily sports poll."
 
   # This can be updated later, but don't want to trigger a change in the resource
