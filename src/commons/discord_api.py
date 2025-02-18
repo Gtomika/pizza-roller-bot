@@ -18,11 +18,16 @@ def __common_headers():
     }
 
 
-def create_message_body(content: str, poll: Union[dict, None] = None):
+def create_message_body(
+        content: str,
+        poll: Union[dict, None] = None,
+        reply_to_message_with_id: Union[str, None] = None
+):
     """
     Creates a message body for a Discord message.
     :param content: The content of the message
     :param poll: Poll object to include in the message
+    :param reply_to_message_with_id: ID of the message to reply to, optional
     :return: The body for further use with 'post_message' function
     """
     message_body = {
@@ -33,6 +38,10 @@ def create_message_body(content: str, poll: Union[dict, None] = None):
     }
     if poll is not None:
         message_body['poll'] = poll
+    if reply_to_message_with_id is not None:
+        message_body['message_reference'] = {
+            'message_id': reply_to_message_with_id
+        }
     return message_body
 
 
@@ -45,10 +54,17 @@ def post_message(channel_id: str, message_body: dict):
     :except requests.HTTPError: If the request was not successful
     """
     response = requests.post(
-        f'{discord_api_base_url}/channels/{channel_id}/messages',
+        url=f'{discord_api_base_url}/channels/{channel_id}/messages',
         headers=__common_headers(),
         json=message_body
     )
     print(f'Discord API response to message post request: {response.json()}')
     response.raise_for_status()
     return response.json()
+
+
+def get_poll_answers(channel_id: str, message_id: str, answer_id: int):
+    response = requests.post(
+        url=f'{discord_api_base_url}/channels/{channel_id}/messages/{message_id}/answers/{answer_id}',
+        headers=__common_headers()
+    )
