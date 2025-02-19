@@ -29,7 +29,7 @@ def send_daily_sports_poll_message(lambda_arn):
     # __create_daily_sports_poll_result_processor(lambda_arn)
 
 
-def process_daily_sports_poll_results(channel_id):
+def process_daily_sports_poll_results():
     channel_id = __get_daily_sports_poll_channel_id()
     message_id = __get_daily_sports_poll_message_id()
     message_body = discord_api.create_message_body(

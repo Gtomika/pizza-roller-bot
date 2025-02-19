@@ -17,8 +17,7 @@ def lambda_handler(event, context):
             return payload, event_type
         elif event_type == 'daily_sports_poll':
             print('Received event to post daily sports poll to Discord...')
-            channel_id = daily_sports_poll.get_daily_sports_poll_channel_id()
-            daily_sports_poll.send_daily_sports_poll_message(channel_id, context.invoked_function_arn)
+            daily_sports_poll.send_daily_sports_poll_message(context.invoked_function_arn)
             print('Successfully posted daily sports poll.')
         elif event_type == 'process_daily_sports_poll':
             print('Received event to process daily sports poll results...')
