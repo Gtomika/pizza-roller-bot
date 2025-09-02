@@ -1,6 +1,7 @@
 terraform/secrets.tfvars
 terraform/secrets.auto.tfvars
 terraform/bot.tfplan
+terraform/bot.destroy.tfplan
 
 artifacts
 installed_dependencies

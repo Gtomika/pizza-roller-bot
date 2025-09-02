@@ -62,7 +62,8 @@ If all commands are successful, the bot is live on AWS. I really should automate
 This removes all traces of the bot infrastructure from existence.
 
 ```bash
-terraform destroy
+terraform plan -destroy -out bot_destroy.tfplan
+terraform apply bot_destroy.tfplan
 ```
 
 Note that the actual Discord application is not deleted, only the AWS resources.
